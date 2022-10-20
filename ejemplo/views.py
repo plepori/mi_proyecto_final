@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from ejemplo.models import Familiar
+from ejemplo.forms import Buscar # <--- NUEVO IMPORT
+from django.views import View # <-- NUEVO IMPORT 
 
 # Create your views here.
 
@@ -13,3 +15,24 @@ def imc(request, peso, altura):
 def mostrar_familiares(request):
   lista_familiares = Familiar.objects.all()
   return render(request, "ejemplo/familiares.html", {"lista_familiares": lista_familiares})
+
+class BuscarFamiliar(View): # hereda de view
+
+    form_class = Buscar #define un atributo de clase, donde buscar es el import que se importo
+    template_name = 'ejemplo/buscar.html' # ruta del template
+    initial = {"nombre":""} #campo nombre por defecto esta vacio
+
+    def get(self, request):
+        form = self.form_class(initial=self.initial)
+        return render(request, self.template_name, {'form':form}) # variable form azul se encuentra en template buscar,  self.template "envia el template"
+
+    def post(self, request):
+        form = self.form_class(request.POST) # envia la consulta que viene del campo nombre
+        if form.is_valid(): # valida que no tenga mas de 100 caracteres la consulta, si no es valido retorna error por django
+            nombre = form.cleaned_data.get("nombre")# cleaned data - limpia datos y genera un diccionario. Get es para diccionario.
+            #campo nombre es la misma variable que form, tiene que respetarse 
+            lista_familiares = Familiar.objects.filter(nombre__icontains=nombre).all() # i May o min / contains trae el stream completo o incompleto
+            form = self.form_class(initial=self.initial) # resetea el formulario para posteriores consultas
+            return render(request, self.template_name, {'form':form, 
+                                                        'lista_familiares':lista_familiares})
+        return render(request, self.template_name, {"form": form})
